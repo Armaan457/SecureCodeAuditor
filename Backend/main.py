@@ -41,14 +41,21 @@ async def analyze_zip(file: UploadFile, request: Request):
     all_findings = {}
     
     def process_file(filename, content):
-        try:
-            result = analyze_file(filename, content)
-            findings = []
-            for output in result['results']:
-                findings.extend(extract_json(output['output'].content))
-            return filename, findings
-        except Exception as e:
-            return filename, {"error": str(e)}
+        result = analyze_file(filename, content)
+        findings_list = []
+
+        for output in result['results']:
+            json_found = extract_json(output['output'].content)
+            for item in json_found:
+                for finding in item.get('findings', []):
+                    if not any(f["code_snippet"] == finding["code_snippet"] and f["vulnerability_type"] == finding["vulnerability_type"] for f in findings_list):
+                        findings_list.append({
+                            "vulnerability_type": finding["vulnerability_type"],
+                            "code_snippet": finding["code_snippet"],
+                            "recommendation": finding["recommendation"]
+                        })
+
+        return filename, findings_list
 
     try:
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -56,10 +63,10 @@ async def analyze_zip(file: UploadFile, request: Request):
             for future in concurrent.futures.as_completed(futures):
                 filename, findings = future.result()
                 all_findings[filename] = findings
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred during file processing: {str(e)}"
+            detail=f"We're still in developement phase, Try again later with less number of files"
         )
 
     return {"results": all_findings}

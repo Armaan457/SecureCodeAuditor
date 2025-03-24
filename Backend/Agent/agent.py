@@ -1,7 +1,6 @@
 from langgraph.graph import StateGraph
 from Agent.nodes import GraphState, analyze_text, merge_results
 from typing import Dict
-from fastapi import HTTPException, status
 
 graph = StateGraph(GraphState)
 graph.add_node("analyze", analyze_text)
@@ -16,7 +15,4 @@ def analyze_file(filename: str, content: str) -> Dict:
         result = app.invoke(state)
         return result
     except Exception as e:
-        raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=f"Error processing file {filename}"
-        )
+        raise Exception(f"Error processing file {filename}")

@@ -3,7 +3,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import List, Dict
 from typing_extensions import TypedDict
 from Agent.llms_prompt import MODELS
-from fastapi import HTTPException, status
 
 class GraphState(TypedDict):
     input_text: str
@@ -30,11 +29,8 @@ def analyze_text(state: GraphState) -> GraphState:
                 results.append(result)
             except Exception as exc:
                 print(f"{agent_name} generated an exception: {exc}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Error occurred while processing."
-                )
-
+                raise Exception(f"Error occurred while processing.")
+    
     state["results"] = results
     return state
 

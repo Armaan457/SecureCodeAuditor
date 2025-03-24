@@ -7,7 +7,7 @@ ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.json', '.jsx', '.tsx', '.java', '.x
 
 def extract_json(target):
     
-    json_pattern = r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}'
+    json_pattern = r'```json\n(.*)\n```'
     json_matches = re.findall(json_pattern, target, re.DOTALL)
 
     extracted_jsons = []
