@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-black antialiased;
+  }
+}
+
+/* Animation Keyframes */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+@keyframes typewriter-1 {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes typewriter-2 {
+  0% { width: 0; }
+  50% { width: 0; }
+  100% { width: 100%; }
+}
+
+@keyframes blink {
+  from, to { border-color: transparent }
+  50% { border-color: #22c55e; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes blink_terminal {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.typewriter-1 {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid #22c55e;
+  width: 0;
+  animation: 
+    typewriter-1 2s steps(40) 1s forwards,
+    blink 1s step-end infinite;
+}
+
+.typewriter-2 {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid #22c55e;
+  width: 0;
+  animation: 
+    typewriter-2 4s steps(40) 1s forwards,
+    blink 1s step-end infinite;
+}
+
+.glitch {
+  position: relative;
+  animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch::before {
+  left: 2px;
+  text-shadow: -2px 0 #ff00c1;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch 5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  left: -2px;
+  text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1;
+  animation: glitch 1s infinite linear alternate-reverse;
+}
+
+.circuit-pattern {
+  background-image: 
+    linear-gradient(to right, #22c55e 1px, transparent 1px),
+    linear-gradient(to bottom, #22c55e 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(circle at center, transparent 30%, black 70%);
+}
+
+/* Smooth reveal animations */
+@keyframes revealUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.reveal {
+  opacity: 0;
+  animation: revealUp 0.6s ease-out forwards;
+}
+
+.reveal-delay-1 {
+  animation-delay: 0.2s;
+}
+
+.reveal-delay-2 {
+  animation-delay: 0.4s;
+}
+
+.reveal-delay-3 {
+  animation-delay: 0.6s;
+}
+
+/* Enhanced background gradients */
+.bg-gradient-radial {
+  background-image: radial-gradient(circle at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+}
+
+.bg-gradient-conic {
+  background-image: conic-gradient(from 0deg at 50% 50%, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+}
+
+.loader {
+  color: #00ff00;
+  font-size: 2rem;
+  text-align: center;
+}
+.loader-text {
+  margin-bottom: 1rem;
+}
+.progress-bar {
+  width: 100px;
+  height: 8px;
+  background: #00ff00;
+  margin: 0 auto 1rem auto;
+  border-radius: 4px;
+}
+.loader-dots .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #00ff00;
+  border-radius: 50%;
+  margin: 0 4px;
+  opacity: 0.7;
+}
+.cursor {
+  animation: blink_terminal 1s steps(1) infinite;
+}

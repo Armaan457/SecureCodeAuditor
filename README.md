@@ -1,6 +1,6 @@
-# SecureCodeAuditor - Agents & Backend
+# SecureCodeAuditor
 
-SecureCodeAuditor is a project designed to analyze code files for vulnerabilities using AI Agents. It supports multiple file types and provides detailed findings with recommendations for improving code security. The project is built with a FastAPI backend and uses LangGraph for agent orchestration.
+SecureCodeAuditor is a project designed to analyze code files for vulnerabilities using AI Agents. It supports multiple file types and provides detailed findings with recommendations for improving code security. The project is built with a FastAPI backend, a modern React frontend for user interaction and uses LangGraph for agent orchestration.
 
 ---
 
@@ -22,6 +22,7 @@ SecureCodeAuditor is a project designed to analyze code files for vulnerabilitie
 
 ## Tech Stack
 
+- **Frontend**: React and Tailwind CSS
 - **Backend**: FastAPI
 - **AI Agents**: LangGraph and Gemini
 
@@ -29,125 +30,54 @@ SecureCodeAuditor is a project designed to analyze code files for vulnerabilitie
 
 ## Installation
 
-### Steps
+### Backend Setup
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Armaan457/SecureCodeAuditor-Agents_and_Backend.git
+   git clone https://github.com/Armaan457/SecureCodeAuditor
    ```
-
-2. Create and activate a virtual environment:
+2. Navigate to the `Backend` directory:
+   ```bash
+   cd Backend
+   ```
+3. Create and activate a virtual environment:
    ```bash
    python -m venv env
-   \env\Scripts\activate
+   .\env\Scripts\activate
    ```
 
-3. Install dependencies:
+4. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Run the server:
+5. Run the server:
    ```bash
    cd Backend
    python main.py
    ```
 
-## API Documentation
+### Frontend Setup
 
-### Endpoint: `/analyze`
+1. Navigate to the `Frontend` directory:
+   ```bash
+   cd Frontend
+   ```
 
-#### Method: `POST`
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-#### Request:
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-- **Body**:
-  - `file` (required): A ZIP file containing code files to be analyzed. Only files with the following extensions are processed: `.py`, `.js`, `.ts`, `.json`, `.jsx`, `.tsx`, `.java`, `.xml`, `.html`, `.css`, `.go`, `.c`, `.cpp`.
-
-#### Response:
-- **Status Code**: `200 OK`
-- **Response Model**: `FindingsResponse`
-  ```json
-  {
-    "results": {
-      "filename1": [
-        {
-          "vulnerability_type": "string",
-          "code_snippet": "string",
-          "recommendation": "string"
-        }
-      ],
-      "filename2": [
-        {
-          "vulnerability_type": "string",
-          "code_snippet": "string",
-          "recommendation": "string"
-        }
-      ]
-    }
-  }
-  ```
-
-#### Error Responses:
-- **400 Bad Request**:
-  - Invalid file format:
-    ```json
-    {
-      "detail": "Invalid file format. Only ZIP files are allowed."
-    }
-    ```
-  - No valid files in the ZIP:
-    ```json
-    {
-      "detail": "No valid files found in the ZIP."
-    }
-    ```
-
-- **429 Too Many Requests**:
-  - Rate limit exceeded:
-    ```json
-    {
-      "detail": "Rate limit exceeded. Try again later."
-    }
-    ```
-
-- **500 Internal Server Error**:
-  - Processing error:
-    ```json
-    {
-      "detail": "We're still in developement phase, Try again later with less number of files"
-    }
-    ```
-
-#### Rate Limiting:
-- **Limit**: 5 requests per minute per client.
-- **Response on exceeding limit**: `429 Too Many Requests`
-
-#### Example Usage:
-**Request**:
-```bash
-curl -X POST "http://localhost:8000/analyze" \
--F "file=@path/to/your/code.zip"
-```
-
-**Response**:
-```json
-{
-  "results": {
-    "example.py": [
-      {
-        "vulnerability_type": "SQL Injection",
-        "code_snippet": "cursor.execute('SELECT * FROM users WHERE id = ' + user_input)",
-        "recommendation": "Use parameterized queries to prevent SQL injection."
-      },
-      {
-        "vulnerability_type": "Command Injection",
-        "code_snippet": "os.system('ping ' + user_input)",
-        "recommendation": "Validate and sanitize user input before passing it to system commands."
-      }
-    ]
-  }
-}
-```
+4. Open your browser and go to `http://localhost:5173` (or the port shown in your terminal).
 
 
+## Developers
 
+- [Armaan Jagirdar](https://github.com/Armaan457)
+- [Amandeep Singh](https://github.com/amandeepsingh29)
