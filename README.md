@@ -43,17 +43,20 @@ SecureCodeAuditor is an AI-powered security tool that helps developers identify 
 3. Create and activate a virtual environment:
    ```bash
    python -m venv env
-   .\env\Scripts\activate
+   env\Scripts\activate
    ```
 
 4. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
+5. Create a `.env` file and add your Gemini API key/s:
+   ```env
+   GEMINI_API_KEY = ...
+   ```
 
-5. Run the server:
+6. Run the server:
    ```bash
-   cd Backend
    python main.py
    ```
 
