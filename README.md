@@ -1,6 +1,6 @@
 # SecureCodeAuditor
 
-SecureCodeAuditor is a project designed to analyze code files for vulnerabilities using AI Agents. It supports multiple file types and provides detailed findings with recommendations for improving code security. The project is built with a FastAPI backend, a modern React frontend for user interaction and uses LangGraph for agent orchestration.
+SecureCodeAuditor is an AI-powered security tool that helps developers identify and fix vulnerabilities in their code. Just upload a ZIP file containing your code files, and the tool will scan it using intelligent AI agents to detect security issues. It supports multiple programming languages and provides clear, actionable suggestions to improve your code’s safety. With a modern, user friendly interface, SecureCodeAuditor brings powerful security insights to your fingertips.
 
 ---
 
