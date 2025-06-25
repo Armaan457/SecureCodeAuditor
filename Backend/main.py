@@ -66,7 +66,7 @@ async def analyze_zip(file: UploadFile, request: Request):
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"We're still in developement phase, Try again later with less number of files"
+            detail=f"We're still in prototype phase. Try again later with less number of files"
         )
 
     return {"results": all_findings}

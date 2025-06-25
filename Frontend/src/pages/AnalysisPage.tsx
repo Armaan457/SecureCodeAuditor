@@ -64,9 +64,45 @@ const handleProcess = async () => {
     } else {
       throw new Error('Invalid response format');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing file:', error);
-    setError('Failed to process file. Please try again.');
+    
+    // Check if it's a network error (server offline)
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || !error.response) {
+      setError('Server offline. Please check your connection or come back later.');
+    }
+    // Check for specific HTTP status codes
+    else if (error.response) {
+      const status = error.response.status;
+      const detail = error.response.data?.detail;
+      
+      if (status !== 200) {
+        if (detail) {
+          setError(detail);
+        } else {
+          switch (status) {
+            case 400:
+              setError('Bad request. Please check your file and try again.');
+              break;
+            case 413:
+              setError('File too large. Please upload a smaller file.');
+              break;
+            case 415:
+              setError('Invalid file format. Only ZIP files are allowed.');
+              break;
+            case 500:
+              setError('Server error. Please try again later.');
+              break;
+            default:
+              setError(`Request failed with status ${status}. Please try again.`);
+          }
+        }
+      }
+    }
+    // Fallback error message
+    else {
+      setError('Failed to process file. Please try again.');
+    }
   } finally {
     setIsProcessing(false);
   }
