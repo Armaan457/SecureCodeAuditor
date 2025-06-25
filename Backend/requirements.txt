@@ -52,7 +52,7 @@ parso==0.8.4
 platformdirs==4.3.6
 prompt_toolkit==3.0.50
 proto-plus==1.26.1
-protobuf==5.29.3
+protobuf==5.29.5
 psutil==7.0.0
 pure_eval==0.2.3
 pyasn1==0.6.1
