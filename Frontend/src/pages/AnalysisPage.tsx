@@ -6,7 +6,7 @@ import axios from 'axios';
 // import * as img from './final.png';
 import img from '../assets/final.png';
 import { GlitchText } from '../components/GlitchText';
-const API_URL = 'securecodeauditor-production.up.railway.app';
+const API_URL = 'https://securecodeauditor-production.up.railway.app';
 
 type Vulnerability = {
   vulnerability_type: string;
