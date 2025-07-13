@@ -63,7 +63,7 @@ Pygments==2.19.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.20
-pywin32==310
+pywin32; sys_platform == 'win32'
 PyYAML==6.0.2
 pyzmq==26.3.0
 requests==2.32.4
