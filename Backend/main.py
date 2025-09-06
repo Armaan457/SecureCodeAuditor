@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from utils import extract_json, extract_zip_files
 from Agent import analyze_file
-from models import FindingsResponse
+from models import AgentResults, VulnerabilityFinding
 import concurrent.futures
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -16,13 +16,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://secure-code-auditor.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post("/analyze", response_model=FindingsResponse)
+@app.post("/analyze", response_model=AgentResults)
 @limiter.limit("5/minute")
 async def analyze_zip(file: UploadFile, request: Request):
     if not file.filename.endswith(".zip"):
@@ -48,12 +48,13 @@ async def analyze_zip(file: UploadFile, request: Request):
             json_found = extract_json(output['output'].content)
             for item in json_found:
                 for finding in item.get('findings', []):
-                    if not any(f["code_snippet"] == finding["code_snippet"] and f["vulnerability_type"] == finding["vulnerability_type"] for f in findings_list):
-                        findings_list.append({
-                            "vulnerability_type": finding["vulnerability_type"],
-                            "code_snippet": finding["code_snippet"],
-                            "recommendation": finding["recommendation"]
-                        })
+                    if not any(f.code_snippet == finding["code_snippet"] and f.vulnerability_type == finding["vulnerability_type"] for f in findings_list):
+                        vulnerability_finding = VulnerabilityFinding(
+                            vulnerability_type=finding.get("vulnerability_type"),
+                            code_snippet=finding.get("code_snippet"),
+                            recommendation=finding.get("recommendation")
+                        )
+                        findings_list.append(vulnerability_finding)
 
         return filename, findings_list
 
@@ -69,7 +70,7 @@ async def analyze_zip(file: UploadFile, request: Request):
             detail=f"We're still in prototype phase. Try again later with less number of files"
         )
 
-    return {"results": all_findings}
+    return AgentResults(results=all_findings)
 
 if __name__ == "__main__":
     import uvicorn

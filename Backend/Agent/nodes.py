@@ -16,7 +16,7 @@ def analyze_text(state: GraphState) -> GraphState:
             model=model_info["name"], google_api_key=model_info["api_key"]
         )      
         response = model.invoke(
-            f"Task: {model_info['task']}\nAnalyze the following input:\n{state['input_text']}"
+            f"{model_info['task']}\nAnalyze the following input:\n{state['input_text']}"
         )
         return {"output": response}
 

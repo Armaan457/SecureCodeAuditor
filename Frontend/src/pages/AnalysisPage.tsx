@@ -6,7 +6,7 @@ import axios from 'axios';
 // import * as img from './final.png';
 import img from '../assets/final.png';
 import { GlitchText } from '../components/GlitchText';
-const API_URL = 'https://securecodeauditor-production.up.railway.app';
+const API_URL = 'http://localhost:8000';
 
 type Vulnerability = {
   vulnerability_type: string;
@@ -92,6 +92,9 @@ const handleProcess = async () => {
               break;
             case 500:
               setError('Server error. Please try again later.');
+              break;
+            case 429:
+              setError("Rate limit exceeded. Please wait a minute before trying again.");
               break;
             default:
               setError(`Request failed with status ${status}. Please try again.`);
@@ -272,7 +275,7 @@ const handleProcess = async () => {
           {Object.entries(analysisResults).map(([filename, vulns]) => (
             <div key={filename} className="mb-8">
               <h2 className="text-xl font-bold mb-4 text-green-300">{filename}</h2>
-              {vulns.length === 0 ? (
+              {!vulns || vulns.length === 0 || vulns.some(vuln => vuln === null) ? (
                 <p className="text-green-400">No vulnerabilities found.</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -285,7 +288,7 @@ const handleProcess = async () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {vulns.map((vuln, idx) => (
+                      {vulns.filter(vuln => vuln !== null).map((vuln, idx) => (
                         <tr key={idx} className="hover:bg-green-500/10">
                           <td className="px-4 py-2 border-b border-green-500/10">{vuln.vulnerability_type}</td>
                           <td className="px-4 py-2 border-b border-green-500/10 whitespace-pre-wrap font-mono text-xs">{vuln.code_snippet}</td>
