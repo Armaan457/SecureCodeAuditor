@@ -18,10 +18,3 @@ COPY . /app
 
 # Expose FastAPI default port
 EXPOSE 8000
-
-# Use Gunicorn + Uvicorn for production
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "4", \
-     "--threads", "4", \
-     "--timeout", "120"]
