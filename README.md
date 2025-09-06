@@ -24,7 +24,8 @@ SecureCodeAuditor is an AI-powered security tool that helps developers identify 
 
 - **Frontend**: React and Tailwind CSS
 - **Backend**: FastAPI
-- **AI Agents**: LangGraph and Gemini
+- **AI Agents**: LangGraph
+- **Containerization**: Docker
 
 ---
 
