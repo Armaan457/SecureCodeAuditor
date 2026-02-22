@@ -1,0 +1,11 @@
+# Backend stuff
+
+test_files
+env
+.env
+__pycache__
+logs
+*.log
+
+# Mac specific files
+.DS_Store

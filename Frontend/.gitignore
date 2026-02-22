@@ -1,10 +1,3 @@
-# Backend stuff
-
-test_files
-env
-.env
-__pycache__
-
 # Logs
 logs
 *.log
@@ -144,3 +137,6 @@ dist
 
 # Mac specific files
 .DS_Store
+
+# Test files
+vulnerability_samples.zip

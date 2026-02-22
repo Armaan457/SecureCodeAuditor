@@ -1,6 +1,11 @@
 common:
-  model_name: "gemini-2.0-flash"
+  model_name: "llama-3.1-8b-instant"
   output_format_instruction: "Provide the output STRICTLY in the specified structure ONLY, no markdown or other text needed. Don't repeat a vulnerability already found."
+  analysis_requirements:
+    - "Only report vulnerabilities that are clearly present in the provided code."
+    - "For each finding, include a direct vulnerable code snippet from the input."
+    - "Recommendations must be specific, concise, and actionable."
+    - "Avoid duplicate findings for the same vulnerability at the same code location."
   response_structure:
     no_findings_response: '{"findings": [{"vulnerability_type": null, "code_snippet": null, "recommendation": null}]}'
     schema: |
@@ -16,7 +21,11 @@ common:
 
 agents:
   xml_api_agent:
-    api_key_env: "GEMINI_API_KEY"
+    api_key_env: "GROQ_API_KEY"
+    focus_areas:
+      - "XML External Entity (XXE)"
+      - "Insecure API usage"
+      - "Security misconfiguration"
     task_description: "Inspect the code for vulnerabilities in XML processing and API configurations. Look for XML External Entity (XXE) attacks, insecure API usage and keys, and Security Misconfigurations."
     example_vulnerabilities: |
       {
@@ -35,7 +44,11 @@ agents:
       }
 
   access_control_agent:
-    api_key_env: "GEMINI_API_KEY_2"
+    api_key_env: "GROQ_API_KEY"
+    focus_areas:
+      - "Insecure Direct Object References (IDOR)"
+      - "Host Header Injection"
+      - "Subdomain Takeover risk indicators"
     task_description: "Analyze the code for access control vulnerabilities. Look for Insecure Direct Object References (IDOR), Host Header Injection, and Subdomain Takeover risks. Identify instances where access control mechanisms are improperly implemented."
     example_vulnerabilities: |
       {
@@ -54,7 +67,7 @@ agents:
       }
 
   file_access_agent:
-    api_key_env: "GEMINI_API_KEY_3"
+    api_key_env: "GROQ_API_KEY"
     focus_areas:
       - "Path Traversal"
       - "Local File Inclusion (LFI)"
@@ -77,7 +90,11 @@ agents:
       }
 
   client_side_agent:
-    api_key_env: "GEMINI_API_KEY_4"
+    api_key_env: "GROQ_API_KEY"
+    focus_areas:
+      - "Cross-Site Scripting (XSS)"
+      - "Clickjacking"
+      - "Content Spoofing"
     task_description: "Examine the code for client-side vulnerabilities. Specifically, identify potential Cross-Site Scripting (XSS), Clickjacking, and Content Spoofing issues. Look for improper handling of user-generated content or unsafe rendering practices."
     example_vulnerabilities: |
       {
@@ -96,7 +113,7 @@ agents:
       }
 
   input_validation_agent:
-    api_key_env: "GEMINI_API_KEY_5"
+    api_key_env: "GROQ_API_KEY"
     focus_areas:
       - "SQL Injection"
       - "Command Injection"

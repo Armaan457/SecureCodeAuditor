@@ -22,6 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/analyze", response_model=AgentResults)
 @limiter.limit("5/minute")
 async def analyze_zip(file: UploadFile, request: Request):
@@ -45,6 +49,7 @@ async def analyze_zip(file: UploadFile, request: Request):
         findings_list = []
 
         for output in result['results']:
+            # print(output['output'].content)
             json_found = extract_json(output['output'].content)
             for item in json_found:
                 for finding in item.get('findings', []):

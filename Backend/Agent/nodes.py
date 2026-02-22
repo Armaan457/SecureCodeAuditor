@@ -1,5 +1,5 @@
 import concurrent.futures
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from typing import List, Dict
 from typing_extensions import TypedDict
 from Agent.llms_prompt import MODELS
@@ -12,8 +12,8 @@ def analyze_text(state: GraphState) -> GraphState:
     results = []
 
     def invoke_model(model_info):
-        model = ChatGoogleGenerativeAI(
-            model=model_info["name"], google_api_key=model_info["api_key"]
+        model = ChatGroq(
+            model=model_info["name"], api_key=model_info["api_key"]
         )      
         response = model.invoke(
             f"{model_info['task']}\nAnalyze the following input:\n{state['input_text']}"

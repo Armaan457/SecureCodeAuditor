@@ -6,23 +6,63 @@ import io
 ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.json', '.jsx', '.tsx', '.java', '.xml', '.html', '.css', '.go', '.c', '.cpp'}
 
 def extract_json(target):
-    
-    json_pattern = r'```json\n(.*)\n```'
-    json_matches = re.findall(json_pattern, target, re.DOTALL)
+    if not target:
+        return []
 
     extracted_jsons = []
+    decoder = json.JSONDecoder()
 
-    for match in json_matches:
-        try:
-            json_data = json.loads(match)
-            if not (isinstance(json_data, dict) and json_data.get('findings') == []):
-                extracted_jsons.append(json_data)        
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-            print(f"Problematic JSON String: {match}")
-            return extracted_jsons
-    
-    return extracted_jsons
+    def append_if_valid(parsed):
+        if not isinstance(parsed, dict):
+            return
+
+        findings = parsed.get("findings")
+        if findings == []:
+            return
+
+        extracted_jsons.append(parsed)
+
+    def parse_from_text(text):
+        index = 0
+        text_length = len(text)
+
+        while index < text_length:
+            next_obj = text.find("{", index)
+            next_arr = text.find("[", index)
+
+            candidates = [position for position in [next_obj, next_arr] if position != -1]
+            if not candidates:
+                break
+
+            start = min(candidates)
+            try:
+                parsed, end = decoder.raw_decode(text, start)
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        append_if_valid(item)
+                else:
+                    append_if_valid(parsed)
+                index = end
+            except json.JSONDecodeError:
+                index = start + 1
+
+    fenced_pattern = r"```(?:json)?\s*(.*?)\s*```"
+    fenced_matches = re.findall(fenced_pattern, target, re.DOTALL | re.IGNORECASE)
+
+    for match in fenced_matches:
+        parse_from_text(match)
+
+    parse_from_text(target)
+
+    unique_jsons = []
+    seen = set()
+    for item in extracted_jsons:
+        fingerprint = json.dumps(item, sort_keys=True)
+        if fingerprint not in seen:
+            seen.add(fingerprint)
+            unique_jsons.append(item)
+
+    return unique_jsons
 
 
 async def extract_zip_files(file):

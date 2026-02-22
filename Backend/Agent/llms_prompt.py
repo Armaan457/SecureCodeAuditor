@@ -12,9 +12,16 @@ def load_agents_config():
 def build_task_prompt(agent_config, common_config):
     schema = common_config['response_structure']['schema'].strip()
     examples = agent_config.get('example_vulnerabilities', '').strip()
+    focus_areas = agent_config.get('focus_areas', [])
+    analysis_requirements = common_config.get('analysis_requirements', [])
+
+    focus_areas_text = "\n".join(f"- {item}" for item in focus_areas) if focus_areas else "- Not specified"
+    analysis_requirements_text = "\n".join(f"- {item}" for item in analysis_requirements) if analysis_requirements else "- Not specified"
 
     task_prompt = (
         f"Task: {agent_config['task_description']}\n"
+        f"Focus areas:\n{focus_areas_text}\n"
+        f"Analysis requirements:\n{analysis_requirements_text}\n"
         f"Important: {common_config['output_format_instruction']}\n"
         f"Required output structure:\n{schema}.\n"
         f"Few Examples:\n{examples}.\n"

@@ -1,13 +1,12 @@
-
 services:
   backend:
     build:
-      context: ./Backend
-    container_name: securecodeauditor-backend
+      context: .
+    container_name: securecodeauditor-backend-prod
     env_file:
-      - ./Backend/.env
+      - .env
     environment:
-      APP_ENV: development   
+      APP_ENV: production
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -15,5 +14,5 @@ services:
       gunicorn -k uvicorn.workers.UvicornWorker main:app
       --bind 0.0.0.0:8000
       --workers 4
-      --threads 4
+      --threads 2
       --timeout 120
