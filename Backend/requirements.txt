@@ -57,7 +57,7 @@ starlette==0.47.2
 tenacity==9.1.2
 typing-inspection==0.4.1
 typing_extensions==4.14.1
-urllib3==2.5.0
+urllib3==2.6.3
 uuid_utils==0.14.1
 uvicorn==0.35.0
 wrapt==1.17.3
