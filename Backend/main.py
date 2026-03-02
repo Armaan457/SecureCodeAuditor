@@ -2,17 +2,11 @@ from fastapi import FastAPI, UploadFile, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from utils import extract_json, extract_zip_files
 from Agent import analyze_file
-from models import AgentResults, VulnerabilityFinding
+from models import AgentResults, FindingsResponse
+from pydantic import ValidationError
 import concurrent.futures
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 app = FastAPI()
-limiter = Limiter(key_func=get_remote_address)
-
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,7 +21,6 @@ def health():
     return {"status": "ok"}
 
 @app.post("/analyze", response_model=AgentResults)
-@limiter.limit("5/minute")
 async def analyze_zip(file: UploadFile, request: Request):
     if not file.filename.endswith(".zip"):
         raise HTTPException(
@@ -52,14 +45,18 @@ async def analyze_zip(file: UploadFile, request: Request):
             # print(output['output'].content)
             json_found = extract_json(output['output'].content)
             for item in json_found:
-                for finding in item.get('findings', []):
-                    if not any(f.code_snippet == finding["code_snippet"] and f.vulnerability_type == finding["vulnerability_type"] for f in findings_list):
-                        vulnerability_finding = VulnerabilityFinding(
-                            vulnerability_type=finding.get("vulnerability_type"),
-                            code_snippet=finding.get("code_snippet"),
-                            recommendation=finding.get("recommendation")
-                        )
-                        findings_list.append(vulnerability_finding)
+                try:
+                    validated_item = FindingsResponse.model_validate(item)
+                except ValidationError:
+                    continue
+
+                for finding in validated_item.findings:
+                    if not any(
+                        f.code_snippet == finding.code_snippet
+                        and f.vulnerability_type == finding.vulnerability_type
+                        for f in findings_list
+                    ):
+                        findings_list.append(finding)
 
         return filename, findings_list
 
