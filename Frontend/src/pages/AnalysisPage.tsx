@@ -6,7 +6,7 @@ import axios from 'axios';
 // import * as img from './final.png';
 import img from '../assets/final.png';
 import { GlitchText } from '../components/GlitchText';
-const API_URL = 'http://localhost:8000';
+const API_URL = 'https://secure-code-auditor-backend.vercel.app';
 
 type Vulnerability = {
   vulnerability_type: string;
