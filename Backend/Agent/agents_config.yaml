@@ -1,11 +1,12 @@
 common:
   model_name: "llama-3.1-8b-instant"
-  output_format_instruction: "Provide the output STRICTLY in the specified structure ONLY, no markdown or other text needed. Don't repeat a vulnerability already found."
+  output_format_instruction: "Provide the output STRICTLY in the specified structure ONLY, no markdown or other text needed. Do NOT include findings with null, empty, or missing fields. Every finding MUST have a non-empty vulnerability_type, code_snippet, and recommendation. If you cannot provide all three fields, DO NOT include that finding.  Don't repeat a vulnerability already found."
   analysis_requirements:
     - "Only report vulnerabilities that are clearly present in the provided code."
     - "For each finding, include a direct vulnerable code snippet from the input."
     - "Recommendations must be specific, concise, and actionable."
     - "Avoid duplicate findings for the same vulnerability at the same code location."
+    - "CRITICAL: Never return a finding with null, empty, or missing code_snippet or recommendation. Only include complete findings."
   response_structure:
     no_findings_response: '{"findings": []}'
     schema: |

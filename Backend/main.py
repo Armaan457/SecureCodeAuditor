@@ -51,6 +51,11 @@ async def analyze_zip(file: UploadFile, request: Request):
                     continue
 
                 for finding in validated_item.findings:
+                    if not finding.vulnerability_type or not finding.code_snippet or not finding.recommendation:
+                        continue
+                    if not finding.code_snippet.strip() or not finding.recommendation.strip():
+                        continue
+                    
                     if not any(
                         f.code_snippet == finding.code_snippet
                         and f.vulnerability_type == finding.vulnerability_type
