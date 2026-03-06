@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import List, Optional, Dict
 
 class VulnerabilityFinding(BaseModel):
@@ -16,6 +16,15 @@ class VulnerabilityFinding(BaseModel):
         None, 
         description="Recommended fix for the vulnerability"
     )
+
+    @model_validator(mode="after")
+    def validate_dependent_fields(self):
+        if self.vulnerability_type is not None:
+            if not self.code_snippet or not self.code_snippet.strip():
+                raise ValueError("code_snippet cannot be null or empty when vulnerability_type is provided")
+            if not self.recommendation or not self.recommendation.strip():
+                raise ValueError("recommendation cannot be null or empty when vulnerability_type is provided")
+        return self
 
 class FindingsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")

@@ -7,7 +7,7 @@ common:
     - "Recommendations must be specific, concise, and actionable."
     - "Avoid duplicate findings for the same vulnerability at the same code location."
   response_structure:
-    no_findings_response: '{"findings": [{"vulnerability_type": null, "code_snippet": null, "recommendation": null}]}'
+    no_findings_response: '{"findings": []}'
     schema: |
       {
         "findings": [
