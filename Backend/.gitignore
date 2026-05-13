@@ -9,3 +9,5 @@ logs
 
 # Mac specific files
 .DS_Store
+
+.python-version
