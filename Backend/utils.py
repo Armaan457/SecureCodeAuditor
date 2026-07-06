@@ -1,14 +1,15 @@
 import json
 import re
 import os
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 import httpx
 from fastapi import HTTPException
-import hashlib
+from upstash_redis import Redis
+from dotenv import load_dotenv
+load_dotenv()
 
 def extract_json(target):
     if not target:
@@ -72,30 +73,21 @@ def extract_json(target):
 
     return unique_jsons
 
-CACHE_VERSION = "v1"
-CACHE_DIR = Path("cache")
-VERSION_CACHE_DIR = CACHE_DIR / CACHE_VERSION
-VERSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
+CACHE_TTL = int(os.getenv("CACHE_TTL", "86400"))
+redis = Redis(
+    url=os.getenv("UPSTASH_REDIS_REST_URL"),
+    token=os.getenv("UPSTASH_REDIS_REST_TOKEN"),
+)
+
 CLONE_TIMEOUT = 60
 MAX_REPO_SIZE_KB = 40 * 1024 
 MAX_FILES = 10
-ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.json', '.jsx', '.tsx', '.java', '.xml', '.html', '.css', '.go', '.c', '.cpp'}
+ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.html', '.css', '.go', '.c', '.cpp'}
 
-def get_version_cache_dir() -> Path:
-    version_dir = CACHE_DIR / CACHE_VERSION
-    version_dir.mkdir(parents=True, exist_ok=True)
-    return version_dir
-def clear_old_cache():
-    for directory in CACHE_DIR.iterdir():
-        if not directory.is_dir():
-            continue
-        if directory.name != CACHE_VERSION:
-            shutil.rmtree(directory, ignore_errors=True)
-
-def get_cache_key(commit_sha: str) -> str:
-    return hashlib.sha256(
-        f"{commit_sha}:{CACHE_VERSION}".encode()
-    ).hexdigest()
+def get_cache_key(owner: str, repo: str, commit_sha: str):
+    return f"{CACHE_VERSION}:{owner}:{repo}:{commit_sha}"
 
 def validate_github_url(url: str):
     parsed = urlparse(url)
@@ -132,18 +124,21 @@ def get_latest_commit_sha(repo_url: str) -> str:
             detail="Unable to access repository."
         )
 
-def cache_path(cache_key: str) -> Path:
-    return VERSION_CACHE_DIR / cache_key
 def cache_exists(cache_key: str) -> bool:
-    return (cache_path(cache_key) / "findings.json").exists()
+    return redis.exists(cache_key) == 1
 def load_cache(cache_key: str):
-    with open(cache_path(cache_key) / "findings.json", "r") as f:
-        return json.load(f)
+    cached = redis.get(cache_key)
+    if cached is None:
+        return None
+    if isinstance(cached, str):
+        return json.loads(cached)
+    return cached
 def save_cache(cache_key: str, findings: dict):
-    directory = cache_path(cache_key)
-    directory.mkdir(parents=True, exist_ok=True)
-    with open(directory / "findings.json", "w") as f:
-        json.dump(findings, f)
+    redis.set(
+        cache_key,
+        json.dumps(findings),
+        ex=CACHE_TTL,
+    )
 
 def clone_repo(repo_url: str):
     temp_dir = tempfile.TemporaryDirectory()

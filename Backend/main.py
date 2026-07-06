@@ -25,7 +25,7 @@ async def analyze_repo(request: RepoRequest):
     owner, repo = validate_github_url(str(request.github_url))
     sha = await validate_repository(owner, repo)
 
-    cache_key = get_cache_key(sha)
+    cache_key = get_cache_key(owner, repo, sha)
 
     if cache_exists(cache_key):
         # print("Cache Hit")
