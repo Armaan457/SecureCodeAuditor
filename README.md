@@ -2,7 +2,7 @@
 
 SecureCodeAuditor is an **AI-powered Static Application Security Testing (SAST) platform** designed to help developers identify security vulnerabilities before deployment.
 
-Unlike traditional rule-based scanners, SecureCodeAuditor leverages a **LangGraph-powered multi-agent architecture**, where specialized AI security agents independently analyze source code for different classes of vulnerabilities. 
+SecureCodeAuditor leverages a **LangGraph-powered multi-agent architecture**, where specialized AI security agents independently analyze source code for different classes of vulnerabilities. 
 
 Whether you're auditing a mini project or an entire repository, SecureCodeAuditor provides fast, scalable, and explainable security analysis through an intuitive web interface.
 
@@ -41,66 +41,19 @@ Whether you're auditing a mini project or an entire repository, SecureCodeAudito
 * HTML
 * CSS
 
+##  Security Coverage
 
-## Setup
-
-### Clone Repository
-
-```bash
-git clone https://github.com/Armaan457/SecureCodeAuditor.git
-cd SecureCodeAuditor
-```
-
----
-
-### Backend
-
-1. Navigate to Backend directory:
-   ```bash
-   cd Backend
-   ```
-
-2. Activate virtual environment:
-    ```bash
-    python -m venv env
-    ```
-   - **macOS/Linux:**
-     ```bash
-     source env/bin/activate
-     ```
-   - **Windows:**
-     ```bash
-     env\Scripts\activate
-     ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start server
-   ```bash
-   uvicorn main:app --reload
-   ```
-
----
-
-### Frontend
-1. Navigate to client directory:
-   ```bash
-   cd Frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start development server:
-   ```bash
-   npm run dev
-   ```
-
----
+SecureCodeAuditor analyzes code for a broad range of security issues, including:
+* Injection vulnerabilities (SQL, Command, Code)
+* Cross-Site Scripting (XSS)
+* Insecure Direct Object References (IDOR)
+* XML External Entity (XXE)
+* Path Traversal
+* API Security Misuse
+* Authentication & Authorization flaws
+* Security Misconfigurations
+* Clickjacking
+* Unsafe File Handling
 
 ## Developers
 
