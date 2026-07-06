@@ -1,43 +1,51 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import List, Optional, Dict
+from pydantic import BaseModel, Field, ConfigDict, HttpUrl, model_validator
+from typing import List, Literal, Dict
+
+class RepoRequest(BaseModel):
+    github_url: HttpUrl
 
 class VulnerabilityFinding(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-    vulnerability_type: Optional[str] = Field(
-        None, 
+    vulnerability_type: str = Field(
+        ...,
         description="Type of vulnerability found"
     )
-    code_snippet: Optional[str] = Field(
-        None, 
-        description="Code snippet showing the vulnerability"
+    severity: Literal["Critical", "High", "Medium", "Low", "Informational"] = Field(
+        ...,
+        description="Severity of the vulnerability"
     )
-    recommendation: Optional[str] = Field(
-        None, 
-        description="Recommended fix for the vulnerability"
+    confidence: Literal["High", "Medium"] = Field(
+        ...,
+        description="Confidence level of the finding"
+    )
+    code_snippet: str = Field(
+        ...,
+        min_length=1,
+        description="Exact vulnerable code snippet"
+    )
+    reason: str = Field(
+        ...,
+        min_length=1,
+        description="Explanation of why the code is vulnerable"
+    )
+    recommendation: str = Field(
+        ...,
+        min_length=1,
+        description="Recommended remediation"
     )
 
     @model_validator(mode="after")
-    def validate_dependent_fields(self):
-        if self.vulnerability_type is not None:
-            if not self.code_snippet or not self.code_snippet.strip():
-                raise ValueError("code_snippet cannot be null or empty when vulnerability_type is provided")
-            if not self.recommendation or not self.recommendation.strip():
-                raise ValueError("recommendation cannot be null or empty when vulnerability_type is provided")
+    def strip_and_validate(self):
+        for field in ("vulnerability_type", "code_snippet", "reason", "recommendation"):
+            value = getattr(self, field).strip()
+            if not value:
+                raise ValueError(f"{field} cannot be blank")
+            setattr(self, field, value)
         return self
-
-class FindingsResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    findings: List[VulnerabilityFinding] = Field(
-        default_factory=list,
-        description="List of vulnerability findings"
-    )
 
 class AgentResults(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
     results: Dict[str, List[VulnerabilityFinding]] = Field(
         default_factory=dict,
-        description="Results from each file analyzed"
+        description="Results grouped by filename"
     )

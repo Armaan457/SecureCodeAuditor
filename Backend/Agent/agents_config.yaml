@@ -1,21 +1,42 @@
 common:
   model_name: "llama-3.1-8b-instant"
-  output_format_instruction: "Provide the output STRICTLY in the specified structure ONLY, no markdown or other text needed. Do NOT include findings with null, empty, or missing fields. Every finding MUST have a non-empty vulnerability_type, code_snippet, and recommendation. If you cannot provide all three fields, DO NOT include that finding.  Don't repeat a vulnerability already found."
+
+  output_format_instruction: >
+    Return ONLY valid JSON matching the schema below.
+    Do not include markdown, explanations, or additional text.
+    Never invent vulnerabilities.
+    If no vulnerability can be proven from the provided code,
+    return {"findings": []}.
+
   analysis_requirements:
-    - "Only report vulnerabilities that are clearly present in the provided code."
-    - "For each finding, include a direct vulnerable code snippet from the input."
-    - "Recommendations must be specific, concise, and actionable."
-    - "Avoid duplicate findings for the same vulnerability at the same code location."
-    - "CRITICAL: Never return a finding with null, empty, or missing code_snippet or recommendation. Only include complete findings."
+    - "Base every finding on direct evidence present in the provided code."
+    - "Trace user-controlled input to security-sensitive operations before concluding that a vulnerability exists."
+    - "Use only the provided code when reasoning about exploitability. Avoid assuming missing application logic, authorization, validation, sanitization, escaping, framework behavior, or middleware."
+    - "Classify findings according to the observed exploit behavior rather than API names, library names, framework functions, variable names, or comments."
+    - "Prefer the most specific vulnerability classification when multiple names describe the same behavior."
+    - "Treat findings as independent only when they represent distinct exploit paths or security impacts; otherwise merge overlapping observations into a single finding."
+    - "Ensure every finding references the code responsible for the vulnerability and explains why that code is vulnerable."
+    - "Before returning results, review findings for unsupported conclusions, duplicate reports, and overlapping classifications."
+    - "When evidence is incomplete or ambiguous, prefer omitting the finding over making assumptions."
+    - "Each unique vulnerable code snippet should generally correspond to a single finding. Report multiple findings for the same snippet only when they represent distinct exploit classes with independent security impact."
+    - "Recommendations should directly address the identified vulnerability."
+
   response_structure:
-    no_findings_response: '{"findings": []}'
+    no_findings_response: |
+      {
+        "findings": []
+      }
+
     schema: |
       {
         "findings": [
           {
-            "vulnerability_type": "string - Type of vulnerability found",
-            "code_snippet": "string - Code snippet showing the vulnerability", 
-            "recommendation": "string - Recommended fix for the vulnerability"
+            "vulnerability_type": "string",
+            "severity": "Critical | High | Medium | Low | Informational",
+            "confidence": "High | Medium",
+            "code_snippet": "string",
+            "reason": "Explain why this code is vulnerable.",
+            "recommendation": "Specific remediation.",
           }
         ]
       }
@@ -27,19 +48,40 @@ agents:
       - "XML External Entity (XXE)"
       - "Insecure API usage"
       - "Security misconfiguration"
-    task_description: "Inspect the code for vulnerabilities in XML processing and API configurations. Look for XML External Entity (XXE) attacks, insecure API usage and keys, and Security Misconfigurations."
+    
+    task_description: >
+      Inspect XML processing and API usage.
+
+      Report vulnerabilities ONLY when:
+        - User-controlled XML is parsed with external entity resolution enabled.
+        - Secrets are hardcoded.
+        - Authentication, authorization or TLS verification is explicitly bypassed.
+        - Dangerous API usage is directly visible.
+
+      Do NOT report:
+        - Normal API calls.
+        - Environment variable usage.
+        - Standard SDK initialization.
+        - Missing rate limiting unless explicitly bypassed.
+
     example_vulnerabilities: |
       {
         "findings": [
           {
             "vulnerability_type": "XML External Entity (XXE)",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "etree.parse(user_input)",
-            "recommendation": "Disable external entity resolution when processing XML files."
+            "reason": "User-controlled XML is parsed without any visible restriction on external entity resolution.",
+            "recommendation": "Disable external entity resolution when processing XML files.",
           },
           {
             "vulnerability_type": "API Misuse",
+            "severity": "Medium",
+            "confidence": "High",
             "code_snippet": "response = requests.post(api_url, data=user_data)",
-            "recommendation": "Use secure authentication and validate API responses."
+            "reason": "The example shows a network request with no visible authentication or response validation safeguards.",
+            "recommendation": "Use secure authentication and validate API responses.",
           }
         ]
       }
@@ -50,19 +92,40 @@ agents:
       - "Insecure Direct Object References (IDOR)"
       - "Host Header Injection"
       - "Subdomain Takeover risk indicators"
-    task_description: "Analyze the code for access control vulnerabilities. Look for Insecure Direct Object References (IDOR), Host Header Injection, and Subdomain Takeover risks. Identify instances where access control mechanisms are improperly implemented."
+    task_description: >
+      Analyze authorization logic.
+      Report IDOR ONLY when resource identifiers supplied by users are accessed
+      without ownership or authorization checks.
+      Report Host Header Injection ONLY when the Host header is trusted to build
+      URLs or make security decisions.
+      Report Subdomain Takeover ONLY when dangling DNS records or abandoned cloud
+      resources are directly visible.
+
+      Do NOT report:
+        - Session variables
+        - Local collections
+        - Loops
+        - In-memory state
+        - Resource iteration
+
     example_vulnerabilities: |
       {
         "findings": [
           {
             "vulnerability_type": "Insecure Direct Object Reference (IDOR)",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "GET /user/123",
-            "recommendation": "Implement access controls to verify the requester is authorized to access the resource."
+            "reason": "A user-supplied resource identifier is accessed without any visible ownership or authorization check.",
+            "recommendation": "Implement access controls to verify the requester is authorized to access the resource.",
           },
           {
             "vulnerability_type": "Host Header Injection",
+            "severity": "Medium",
+            "confidence": "High",
             "code_snippet": "url = request.headers['Host'] + '/login'",
-            "recommendation": "Validate and sanitize the Host header to prevent injection attacks."
+            "reason": "The Host header is used directly to construct a URL, which can let an attacker influence security-sensitive routing or links.",
+            "recommendation": "Validate and sanitize the Host header to prevent injection attacks.",
           }
         ]
       }
@@ -73,19 +136,41 @@ agents:
       - "Path Traversal"
       - "Local File Inclusion (LFI)"
       - "Remote File Inclusion (RFI)"
-    task_description: "Scan the code for vulnerabilities related to file access. Detect instances of Path Traversal, Local File Inclusion (LFI), and Remote File Inclusion (RFI). Focus on functions that handle file paths or include external files."
+    task_description: >
+      Analyze filesystem operations.
+      Report Path Traversal ONLY if untrusted input reaches filesystem paths
+      without validation or normalization.
+      Report LFI ONLY if attacker-controlled input determines which local file
+      is included or executed.
+      Report RFI ONLY if attacker-controlled remote URLs or resources are fetched
+      or executed.
+
+      Do NOT report:
+        - load_dotenv()
+        - pathlib.Path()
+        - open() on constant paths
+        - reading project configuration files
+        - loading templates
+        - framework utilities
+
     example_vulnerabilities: |
       {
         "findings": [
           {
             "vulnerability_type": "Path Traversal",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "open('../../etc/passwd', 'r')",
-            "recommendation": "Validate file paths and restrict access to specific directories."
+            "reason": "The file path is directly constructed to reach outside the intended directory scope.",
+            "recommendation": "Validate file paths and restrict access to specific directories.",
           },
           {
             "vulnerability_type": "Local File Inclusion (LFI)",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "exec(open(user_input).read())",
-            "recommendation": "Ensure user input is validated and does not reference sensitive files."
+            "reason": "Attacker-controlled input determines which local file is opened and executed.",
+            "recommendation": "Ensure user input is validated and does not reference sensitive files.",
           }
         ]
       }
@@ -96,19 +181,39 @@ agents:
       - "Cross-Site Scripting (XSS)"
       - "Clickjacking"
       - "Content Spoofing"
-    task_description: "Examine the code for client-side vulnerabilities. Specifically, identify potential Cross-Site Scripting (XSS), Clickjacking, and Content Spoofing issues. Look for improper handling of user-generated content or unsafe rendering practices."
+    task_description: >
+      Analyze rendering of untrusted user input.
+      Report XSS ONLY if attacker-controlled data is rendered into HTML,
+      JavaScript, templates or DOM without escaping.
+      Report Clickjacking ONLY if HTTP headers explicitly allow framing.
+      Report Content Spoofing ONLY when user-controlled content can impersonate
+      trusted UI elements.
+
+      Do NOT report:
+        - HTML escaping performed by frameworks
+        - Text rendering APIs
+        - User input widgets
+        - Chat input boxes
+        - Template variables that are automatically escaped
+
     example_vulnerabilities: |
       {
         "findings": [
           {
             "vulnerability_type": "Cross-Site Scripting (XSS)",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "{{ user_input }}",
-            "recommendation": "Escape or sanitize user-generated content before rendering."
+            "reason": "Untrusted content is rendered into a template without any visible escaping or sanitization.",
+            "recommendation": "Escape or sanitize user-generated content before rendering.",
           },
           {
             "vulnerability_type": "Clickjacking",
+            "severity": "Medium",
+            "confidence": "High",
             "code_snippet": "response.headers['X-Frame-Options'] = 'ALLOW'",
-            "recommendation": "Set 'X-Frame-Options' to 'DENY' or 'SAMEORIGIN' to prevent clickjacking."
+            "reason": "The framing policy explicitly allows the page to be embedded, which can enable clickjacking.",
+            "recommendation": "Set 'X-Frame-Options' to 'DENY' or 'SAMEORIGIN' to prevent clickjacking.",
           }
         ]
       }
@@ -119,19 +224,39 @@ agents:
       - "SQL Injection"
       - "Command Injection"
       - "Code Injection"
-    task_description: "Analyze the provided code for vulnerabilities related to user input handling. Specifically, detect cases where user input is directly passed into SQL queries, system commands, or dynamic code execution without validation or sanitization. Focus on identifying potential SQL Injection, Command Injection, and Code Injection vulnerabilities."
+    task_description: >
+      Analyze data flow from user input.
+      Report SQL Injection ONLY when user-controlled data reaches SQL without
+      parameterization.
+      Report Command Injection ONLY when user input reaches system commands.
+      Report Code Injection ONLY when user input reaches eval(), exec(),
+      compile(), pickle.loads(), yaml.load(), template execution, or similar
+      dangerous execution sinks.
+
+      Do NOT report:
+        - Parameterized queries
+        - Prepared statements
+        - Safe subprocess usage
+        - String concatenation unrelated to execution
+
     example_vulnerabilities: |
       {
         "findings": [
           {
             "vulnerability_type": "SQL Injection",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "cursor.execute('SELECT * FROM users WHERE id = ' + user_input)",
-            "recommendation": "Use parameterized queries to prevent SQL injection."
+            "reason": "User input is concatenated directly into a SQL query string without parameterization.",
+            "recommendation": "Use parameterized queries to prevent SQL injection.",
           },
           {
             "vulnerability_type": "Command Injection",
+            "severity": "High",
+            "confidence": "High",
             "code_snippet": "os.system('ping ' + user_input)",
-            "recommendation": "Validate and sanitize user input before passing it to system commands."
+            "reason": "User input is concatenated into a system command, allowing arbitrary command execution.",
+            "recommendation": "Validate and sanitize user input before passing it to system commands.",
           }
         ]
       }

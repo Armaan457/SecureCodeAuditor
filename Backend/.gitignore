@@ -9,5 +9,7 @@ logs
 
 # Mac specific files
 .DS_Store
-
+cache
 .python-version
+test_cases
+localtest.py

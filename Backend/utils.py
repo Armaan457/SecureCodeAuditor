@@ -1,9 +1,14 @@
 import json
 import re
-import zipfile
-import io
-
-ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.json', '.jsx', '.tsx', '.java', '.xml', '.html', '.css', '.go', '.c', '.cpp'}
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+from urllib.parse import urlparse
+import httpx
+from fastapi import HTTPException
+import hashlib
 
 def extract_json(target):
     if not target:
@@ -17,7 +22,10 @@ def extract_json(target):
             return
 
         findings = parsed.get("findings")
-        if findings == []:
+        if not isinstance(findings, list):
+            return
+
+        if len(findings) == 0:
             return
 
         extracted_jsons.append(parsed)
@@ -64,51 +72,165 @@ def extract_json(target):
 
     return unique_jsons
 
+CACHE_VERSION = "v1"
+CACHE_DIR = Path("cache")
+VERSION_CACHE_DIR = CACHE_DIR / CACHE_VERSION
+VERSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CLONE_TIMEOUT = 60
+MAX_REPO_SIZE_KB = 40 * 1024 
+MAX_FILES = 10
+ALLOWED_EXTENSIONS = {'.py', '.js', '.ts', '.json', '.jsx', '.tsx', '.java', '.xml', '.html', '.css', '.go', '.c', '.cpp'}
 
-async def extract_zip_files(file):
+def get_version_cache_dir() -> Path:
+    version_dir = CACHE_DIR / CACHE_VERSION
+    version_dir.mkdir(parents=True, exist_ok=True)
+    return version_dir
+def clear_old_cache():
+    for directory in CACHE_DIR.iterdir():
+        if not directory.is_dir():
+            continue
+        if directory.name != CACHE_VERSION:
+            shutil.rmtree(directory, ignore_errors=True)
+
+def get_cache_key(commit_sha: str) -> str:
+    return hashlib.sha256(
+        f"{commit_sha}:{CACHE_VERSION}".encode()
+    ).hexdigest()
+
+def validate_github_url(url: str):
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(400, "Invalid URL.")
+    if parsed.netloc.lower() != "github.com":
+        raise HTTPException(400, "Only GitHub repositories are supported.")
+
+    parts = parsed.path.strip("/").split("/")
+
+    if len(parts) < 2:
+        raise HTTPException(
+            400,
+            "Repository URL must be https://github.com/<owner>/<repo>"
+        )
+    owner = parts[0]
+    repo = parts[1].removesuffix(".git")
+    return owner, repo
+
+def get_latest_commit_sha(repo_url: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", repo_url, "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+        return result.stdout.split()[0]
+
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to access repository."
+        )
+
+def cache_path(cache_key: str) -> Path:
+    return VERSION_CACHE_DIR / cache_key
+def cache_exists(cache_key: str) -> bool:
+    return (cache_path(cache_key) / "findings.json").exists()
+def load_cache(cache_key: str):
+    with open(cache_path(cache_key) / "findings.json", "r") as f:
+        return json.load(f)
+def save_cache(cache_key: str, findings: dict):
+    directory = cache_path(cache_key)
+    directory.mkdir(parents=True, exist_ok=True)
+    with open(directory / "findings.json", "w") as f:
+        json.dump(findings, f)
+
+def clone_repo(repo_url: str):
+    temp_dir = tempfile.TemporaryDirectory()
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth",  "1", repo_url, temp_dir.name],
+            check=True,
+            timeout=CLONE_TIMEOUT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except subprocess.TimeoutExpired:
+        temp_dir.cleanup()
+        raise HTTPException(408, "Repository clone timed out.")
+    except subprocess.CalledProcessError as e:
+        temp_dir.cleanup()
+        raise HTTPException(400, e.stderr)
+    return temp_dir
+
+
+async def validate_repository(owner: str, repo: str):
+    async with httpx.AsyncClient(timeout=20) as client:
+        repo_resp = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}"
+        )
+        if repo_resp.status_code != 200:
+            raise HTTPException(
+                404,
+                "Repository not found."
+            )
+
+        repo_info = repo_resp.json()
+        if repo_info["size"] > MAX_REPO_SIZE_KB:
+            raise HTTPException(
+                413,
+                f"Repository exceeds {MAX_REPO_SIZE_KB // 1024} MB."
+            )
+        default_branch = repo_info["default_branch"]
+
+        commit_resp = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}/commits/{default_branch}"
+        )
+        if commit_resp.status_code != 200:
+            raise HTTPException(400, "Unable to fetch latest commit.")
+        sha = commit_resp.json()["sha"]
+
+        tree_resp = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}",
+            params={"recursive": "1"},
+        )
+        if tree_resp.status_code != 200:
+            raise HTTPException(400, "Unable to inspect repository.")
+        tree = tree_resp.json()["tree"]
+        file_count = sum(
+            1
+            for node in tree
+            if (node["type"] == "blob" and Path(node["path"]).suffix.lower() in ALLOWED_EXTENSIONS)
+        )
+        if file_count > MAX_FILES:
+            raise HTTPException(
+                413,
+                f"Repository contains more than {MAX_FILES} supported source files."
+            )
+        return sha
+
+def load_repo_files(repo_path):
     files = {}
-    
-    ignored_directories = {
-        '__MACOSX', 
-        '.DS_Store', 
-    }
-    
-    contents = await file.read()
-    with zipfile.ZipFile(io.BytesIO(contents)) as zip_ref:
-        for file_name in zip_ref.namelist():
-            if file_name.endswith('/'):
+    for root, _, filenames in os.walk(repo_path):
+        for filename in filenames:
+            extension = os.path.splitext(filename)[1].lower()
+
+            if extension not in ALLOWED_EXTENSIONS:
                 continue
-                
-            should_skip = False
-            for ignored in ignored_directories:
-                if file_name.startswith(ignored) or f"/{ignored}" in file_name or file_name.endswith(ignored):
-                    should_skip = True
-                    break
-            
-            if should_skip:
+
+            path = os.path.join(root, filename)
+            relative = os.path.relpath(path, repo_path)
+
+            try:
+                with open(path, "rb") as f:
+                    content = f.read()
+                for encoding in ("utf-8", "latin-1", "cp1252"):
+                    try:
+                        files[relative] = content.decode(encoding)
+                        break
+                    except UnicodeDecodeError:
+                        pass
+            except Exception:
                 continue
-                
-            if '.' not in file_name:
-                continue
-                
-            extension = '.' + file_name.split('.')[-1].lower()
-            if extension in ALLOWED_EXTENSIONS:
-                try:
-                    with zip_ref.open(file_name) as f:
-                        file_content = f.read()
-                        try:
-                            files[file_name] = file_content.decode('utf-8')
-                        except UnicodeDecodeError:
-                            try:
-                                files[file_name] = file_content.decode('latin-1')
-                            except UnicodeDecodeError:
-                                try:
-                                    files[file_name] = file_content.decode('cp1252')
-                                except UnicodeDecodeError:
-                                    print(f"Error: Could not decode file {file_name}, skipping...")
-                                    continue
-                except Exception as e:
-                    print(f"Error: Could not extract file {file_name}: {e}")
-                    continue
-    
     return files

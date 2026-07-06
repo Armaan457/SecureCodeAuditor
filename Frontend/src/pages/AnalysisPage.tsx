@@ -1,6 +1,5 @@
-import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, Download, ArrowLeft, X, Terminal, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Download, ArrowLeft, X, Terminal, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 // import * as img from './final.png';
@@ -8,54 +7,52 @@ import img from '../assets/final.png';
 import { GlitchText } from '../components/GlitchText';
 const API_URL = 'https://secure-code-auditor-backend.vercel.app';
 
-type Vulnerability = {
+type Severity =
+  | "Critical"
+  | "High"
+  | "Medium"
+  | "Low"
+  | "Informational";
+
+type Confidence = "High" | "Medium";
+
+type Finding = {
   vulnerability_type: string;
+  severity: Severity;
+  confidence: Confidence;
   code_snippet: string;
+  reason: string;
   recommendation: string;
 };
 
 type AnalysisResults = {
-  [filename: string]: Vulnerability[];
+  [filename: string]: Finding[];
 };
 
 export default function BetaPage() {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [_, setReport] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [githubUrl, setGithubUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const navigate = useNavigate();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
-    setSelectedFile(acceptedFiles[0]);
-    setReport(null);
-    setError(null);
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
-    onDrop,
-    maxFiles: 1,
-    accept: {
-      'application/zip': ['.zip']
-    }
-  });
-
 const handleProcess = async () => {
-  if (!selectedFile) return;
+  const sanitizedUrl = githubUrl.trim();
+  if (!sanitizedUrl) {
+    setError('Please enter a GitHub repository URL.');
+    return;
+  }
 
   setIsProcessing(true);
   setError(null);
-  setReport(null);
   setAnalysisResults(null);
 
   try {
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    const response = await axios.post(`${API_URL}/analyze`, formData, {
+    const response = await axios.post(`${API_URL}/analyze`, {
+      github_url: sanitizedUrl,
+    }, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
     });
 
@@ -82,13 +79,13 @@ const handleProcess = async () => {
         } else {
           switch (status) {
             case 400:
-              setError('Bad request. Please check your file and try again.');
+              setError('Bad request. Please check the GitHub URL and try again.');
               break;
-            case 413:
-              setError('File too large. Please upload a smaller file.');
+            case 422:
+              setError('Invalid GitHub URL format. Please enter a valid repository link.');
               break;
-            case 415:
-              setError('Invalid file format. Only ZIP files are allowed.');
+            case 404:
+              setError('Repository not found or inaccessible. Check the URL and repository visibility.');
               break;
             case 500:
               setError('Server error. Please try again later.');
@@ -119,17 +116,22 @@ const handleProcess = async () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `security-report-${selectedFile?.name || 'analysis'}.json`;
+    const repoSlug = githubUrl
+      .trim()
+      .replace(/^https?:\/\/github\.com\//, '')
+      .replace(/[^a-zA-Z0-9-_/.]/g, '')
+      .replace(/\//g, '-') || 'analysis';
+    a.download = `security-report-${repoSlug}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   };
 
-  const clearFile = () => {
-    setSelectedFile(null);
-    setReport(null);
+  const clearInput = () => {
+    setGithubUrl('');
     setError(null);
+    setAnalysisResults(null);
   };
 
   return (
@@ -171,79 +173,67 @@ const handleProcess = async () => {
             {/* <GlitchText text="Beta" className="font-bold tracking-tight block text-green-500" /> */}
           </h1>
           <p className="text-xl text-green-500/80 max-w-2xl mx-auto typewriter-1">
-            Upload your code file for security analysis
+            Paste a GitHub repository URL for security analysis
           </p>
         </header>
 
-        {/* Enhanced Upload Section */}
+        {/* Repository Input Section */}
         <section className="max-w-2xl mx-auto mb-8 reveal reveal-delay-1">
-          {!selectedFile ? (
-            <div
-              {...getRootProps()}
-              className={`
-                p-10 border-2 border-dashed rounded-xl backdrop-blur-sm
-                ${isDragActive 
-                  ? 'border-green-400 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.3)]' 
-                  : 'border-green-500/20'}
-                hover:border-green-400 hover:bg-green-500/5 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)]
-                transition-all duration-300 cursor-pointer
-                flex flex-col items-center justify-center
-                min-h-[200px]
-              `}
-            >
-              <input {...getInputProps()} />
-              <Upload className={`w-12 h-12 mb-4 text-green-400 ${isDragActive ? 'animate-bounce' : 'animate-float'}`} />
-              {isDragActive ? (
-                <p className="text-green-300 animate-pulse">Drop the file here...</p>
-              ) : (
-                <div className="text-center">
-                  <p className="mb-2">Drag & drop a code file here, or click to select</p>
-                  <p className="text-sm text-green-500/60">Supported format: .zip (archive your code files)</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-6 border border-green-500/20 rounded-xl bg-green-500/5 backdrop-blur-sm hover:shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Terminal className="w-5 h-5 text-green-400" />
-                  <span className="text-green-400 font-medium">{selectedFile.name}</span>
-                </div>
+          <div className="p-6 border border-green-500/20 rounded-xl bg-green-500/5 backdrop-blur-sm hover:shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all duration-300">
+            <div className="mb-4">
+              <label htmlFor="github-url" className="block text-sm text-green-500/80 mb-2">
+                GitHub Repository URL
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="github-url"
+                  type="url"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  placeholder="https://github.com/owner/repository"
+                  className="w-full px-4 py-3 rounded-lg border border-green-500/30 bg-black/40 text-green-300 placeholder:text-green-500/50 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-400"
+                />
                 <button
-                  onClick={clearFile}
+                  onClick={clearInput}
+                  type="button"
                   className="text-green-400 hover:text-green-300 transition-colors p-2 hover:bg-green-500/10 rounded-full"
-                  title="Remove file"
+                  title="Clear URL"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
-              <button
-                onClick={handleProcess}
-                disabled={isProcessing}
-                className={`
-                  w-full py-3 px-6 rounded-lg
-                  flex items-center justify-center gap-2
-                  ${isProcessing 
-                    ? 'bg-green-500/20 cursor-not-allowed' 
-                    : 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 hover:border-green-400 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)]'}
-                  transition-all duration-300 group
-                `}
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="animate-spin h-5 w-5 border-2 border-green-400 border-t-transparent rounded-full" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Terminal className="w-5 h-5 group-hover:animate-bounce" />
-                    Process File
-                  </>
-                )}
-              </button>
+              <p className="text-sm text-green-500/60 mt-2">Example: https://github.com/owner/repo</p>
             </div>
-          )}
+
+            <button
+              onClick={handleProcess}
+              disabled={isProcessing || !githubUrl.trim()}
+              className={`
+                w-full py-3 px-6 rounded-lg
+                flex items-center justify-center gap-2
+                ${isProcessing || !githubUrl.trim()
+                  ? 'bg-green-500/20 cursor-not-allowed'
+                  : 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 hover:border-green-400 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)]'}
+                transition-all duration-300 group
+              `}
+            >
+              {isProcessing ? (
+                <>
+                  <div className="animate-spin h-5 w-5 border-2 border-green-400 border-t-transparent rounded-full" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Terminal className="w-5 h-5 group-hover:animate-bounce" />
+                  Analyze Repository
+                </>
+              )}
+            </button>
+
+            <p className="text-xs text-green-500/50 mt-3">
+              Public repositories work best. Private repositories require backend access credentials.
+            </p>
+            </div>
         </section>
 
         {/* Enhanced Error Message */}
@@ -275,7 +265,7 @@ const handleProcess = async () => {
           {Object.entries(analysisResults).map(([filename, vulns]) => (
             <div key={filename} className="mb-8">
               <h2 className="text-xl font-bold mb-4 text-green-300">{filename}</h2>
-              {!vulns || vulns.length === 0 || vulns.some(vuln => vuln === null) ? (
+              {!Array.isArray(vulns) || vulns.length === 0 ? (
                 <p className="text-green-400">No vulnerabilities found.</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -283,15 +273,21 @@ const handleProcess = async () => {
                     <thead>
                       <tr>
                         <th className="px-4 py-2 border-b border-green-500/20">Type</th>
+                        <th className="px-4 py-2 border-b border-green-500/20">Severity</th>
+                        <th className="px-4 py-2 border-b border-green-500/20">Confidence</th>
                         <th className="px-4 py-2 border-b border-green-500/20">Code Snippet</th>
+                        <th className="px-4 py-2 border-b border-green-500/20">Reason</th>
                         <th className="px-4 py-2 border-b border-green-500/20">Recommendation</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {vulns.filter(vuln => vuln !== null).map((vuln, idx) => (
-                        <tr key={idx} className="hover:bg-green-500/10">
+                      {vulns.map((vuln, idx) => (
+                        <tr key={`${filename}-${idx}`} className="hover:bg-green-500/10">
                           <td className="px-4 py-2 border-b border-green-500/10">{vuln.vulnerability_type}</td>
+                          <td className="px-4 py-2 border-b border-green-500/10">{vuln.severity}</td>
+                          <td className="px-4 py-2 border-b border-green-500/10">{vuln.confidence}</td>
                           <td className="px-4 py-2 border-b border-green-500/10 whitespace-pre-wrap font-mono text-xs">{vuln.code_snippet}</td>
+                          <td className="px-4 py-2 border-b border-green-500/10">{vuln.reason}</td>
                           <td className="px-4 py-2 border-b border-green-500/10">{vuln.recommendation}</td>
                         </tr>
                       ))}
